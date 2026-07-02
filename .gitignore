@@ -1,0 +1,31 @@
+# Environment variables — never commit secrets
+.env
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# ChromaDB local vector store
+chroma_store/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/editor configs
+.vscode/
+.idea/
+
+# Uploaded documents (user data, shouldn't be in source control)
+uploads/
+
+# Pytest / coverage
+.pytest_cache/
+htmlcov/
+.coverage
