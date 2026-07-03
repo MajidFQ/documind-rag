@@ -296,6 +296,7 @@ def process_and_store(
     file_path: str,
     chunking_method: str = "recursive",
     collection_name: str = CHROMA_COLLECTION_NAME,
+    original_filename: Optional[str] = None,
 ) -> int:
     """
     Run the full ingestion pipeline for one document and persist it to ChromaDB.
@@ -309,9 +310,14 @@ def process_and_store(
       5. store           — upsert vectors + metadata into ChromaDB
 
     Args:
-        file_path:        Absolute or relative path to the uploaded file.
-        chunking_method:  'recursive' (default) or 'fixed_size'.
-        collection_name:  ChromaDB collection to write into.
+        file_path:          Absolute or relative path to the uploaded file.
+        chunking_method:    'recursive' (default) or 'fixed_size'.
+        collection_name:    ChromaDB collection to write into.
+        original_filename:  Display name for citations (e.g. the user's
+                            original upload name). Defaults to the basename
+                            of file_path when not provided. Pass this from
+                            main.py so temp file paths don't appear in
+                            citations.
 
     Returns:
         Total number of chunks stored.
@@ -365,7 +371,7 @@ def process_and_store(
     # Page number and source are already attached per-chunk above, so
     # attach_metadata here mostly acts as a consistency pass.
     print("Step 3/4: Attaching metadata ...")
-    source_filename = pathlib.Path(file_path).name
+    source_filename = original_filename or pathlib.Path(file_path).name
     # Build page_map from the chunk_id values we just assigned
     page_map = {
         chunk["chunk_id"]: chunk.get("page_number")
