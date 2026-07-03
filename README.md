@@ -176,6 +176,22 @@ DocuMind/
 
 ---
 
+## Screenshots
+
+![Upload flow](docs/screenshots/upload.png)
+![Query with faithfulness score](docs/screenshots/query_result.png)
+![Reranking comparison](docs/screenshots/reranking.png)
+
+---
+
+## Demo
+
+A screen recording walkthrough of the full user flow (upload → query → faithfulness score) is available below. Recorded with [Loom](https://www.loom.com) — no account required to view.
+
+[Demo video link — to be added]
+
+---
+
 ## Known limitations and what I'd improve with more time
 
 **No automated evaluation suite.** There is an `eval.py` stub but no working evaluation pipeline. The next step would be integrating [RAGAS](https://github.com/explodinggradients/ragas) to measure context precision, context recall, answer faithfulness, and answer relevance against a golden Q&A dataset. Right now the only quality signal per query is the faithfulness score, which is a proxy, not a ground-truth metric.
