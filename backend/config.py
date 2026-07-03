@@ -48,8 +48,10 @@ TOP_K: int = 5
 EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
 
 # --- LLM ---
-# Groq-hosted model used for answer generation
-LLM_MODEL: str = "llama3-8b-8192"
+# Groq-hosted model used for answer generation.
+# llama-3.1-8b-instant replaced the decommissioned llama3-8b-8192 —
+# same weight class, 128k context window, faster throughput on Groq.
+LLM_MODEL: str = "llama-3.1-8b-instant"
 
 # --- Chroma ---
 # Local directory where ChromaDB persists its vector data
