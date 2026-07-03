@@ -30,15 +30,15 @@ from chromadb.config import Settings
 # We guard against the GROQ_API_KEY check crashing the import by reading the
 # embedding/chroma constants ourselves if config fails to load.
 try:
-    from config import EMBEDDING_MODEL, CHROMA_PERSIST_DIR, CHROMA_COLLECTION_NAME
+    from .config import EMBEDDING_MODEL, CHROMA_PERSIST_DIR, CHROMA_COLLECTION_NAME
 except OSError:
     # config.py raises OSError when GROQ_API_KEY is absent.  embeddings.py
     # doesn't need that key, so we fall back to the same defaults here.
     EMBEDDING_MODEL = "all-MiniLM-L6-v2"
     CHROMA_PERSIST_DIR = "./chroma_store"
     CHROMA_COLLECTION_NAME = "documind"
-from ingestion import extract_text
-from chunking import fixed_size_chunking, recursive_chunking, attach_metadata
+from .ingestion import extract_text
+from .chunking import fixed_size_chunking, recursive_chunking, attach_metadata
 
 
 # ---------------------------------------------------------------------------
@@ -435,7 +435,7 @@ if __name__ == "__main__":
     TEST_COLLECTION = "test_embeddings_pipeline"
 
     # ── Chunk the sample text directly ───────────────────────────────────
-    from chunking import recursive_chunking, attach_metadata
+    from .chunking import recursive_chunking, attach_metadata
 
     chunks = recursive_chunking(SAMPLE_TEXT.strip())
     chunks = attach_metadata(chunks, source_filename="sample_test.txt")

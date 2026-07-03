@@ -43,7 +43,7 @@ from typing import List, Dict, Optional
 from groq import Groq, RateLimitError, APIStatusError, APIConnectionError
 
 try:
-    from config import GROQ_API_KEY, LLM_MODEL, CHROMA_COLLECTION_NAME, TOP_K
+    from .config import GROQ_API_KEY, LLM_MODEL, CHROMA_COLLECTION_NAME, TOP_K
 except OSError:
     # Fallback if config can't load (e.g. GROQ_API_KEY not yet set)
     GROQ_API_KEY = None
@@ -51,8 +51,8 @@ except OSError:
     CHROMA_COLLECTION_NAME = "documind"
     TOP_K = 5
 
-from retrieval import retrieve_and_rerank, CrossEncoderReranker
-from embeddings import EmbeddingModel, VectorStore
+from .retrieval import retrieve_and_rerank, CrossEncoderReranker
+from .embeddings import EmbeddingModel, VectorStore
 
 
 # ---------------------------------------------------------------------------
@@ -533,7 +533,7 @@ if __name__ == "__main__":
     import os
     import pathlib
     from dotenv import load_dotenv
-    from chunking import attach_metadata
+    from .chunking import attach_metadata
 
     load_dotenv(pathlib.Path(__file__).parent.parent / ".env")
 

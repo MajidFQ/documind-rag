@@ -33,12 +33,12 @@ from typing import List, Dict, Optional
 from sentence_transformers import CrossEncoder
 
 try:
-    from config import CHROMA_PERSIST_DIR, CHROMA_COLLECTION_NAME
+    from .config import CHROMA_PERSIST_DIR, CHROMA_COLLECTION_NAME
 except OSError:
     CHROMA_PERSIST_DIR = "./chroma_store"
     CHROMA_COLLECTION_NAME = "documind"
 
-from embeddings import EmbeddingModel, VectorStore
+from .embeddings import EmbeddingModel, VectorStore
 
 
 # Cross-encoder model used for reranking.
@@ -317,7 +317,7 @@ def retrieve_and_rerank(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    from chunking import recursive_chunking, attach_metadata
+    from .chunking import recursive_chunking, attach_metadata
 
     # ── Build a richer test corpus so top_k > 1 is meaningful ────────────
     CORPUS = [

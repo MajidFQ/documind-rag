@@ -45,10 +45,10 @@ from dotenv import load_dotenv
 # Load .env before importing config (config reads env vars at import time)
 load_dotenv(pathlib.Path(__file__).parent.parent / ".env")
 
-from config import GROQ_API_KEY, CHROMA_COLLECTION_NAME, TOP_K
-from embeddings import EmbeddingModel, VectorStore, process_and_store
-from retrieval import CrossEncoderReranker
-from generation import answer_query
+from .config import GROQ_API_KEY, CHROMA_COLLECTION_NAME, TOP_K
+from .embeddings import EmbeddingModel, VectorStore, process_and_store
+from .retrieval import CrossEncoderReranker
+from .generation import answer_query
 
 # ── Allowed upload extensions ─────────────────────────────────────────────
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
