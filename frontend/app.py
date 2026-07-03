@@ -11,9 +11,13 @@ Page layout:
     ├── Title + description
     ├── File uploader (PDF / DOCX)
     ├── Chunking method dropdown
-    ├── Upload & Process button  →  POST /upload
-    ├── Collection picker        →  GET /collections (refreshed after upload)
-    └── Delete collection button →  DELETE /collections/{name}
+    ├── Upload & Process button    →  POST /upload
+    ├── Active Collection picker   →  GET /collections (refreshed after upload)
+    ├── Delete active collection   →  DELETE /collections/{name}
+    └── All Collections expander   →  GET /collections (live list with per-row delete)
+          Shows every collection with name + chunk count.
+          Each row has its own delete button with a two-step confirmation.
+          Empty state shown when no documents have been uploaded yet.
 
   Main area
     ├── Empty-state message when no collection is selected
@@ -25,7 +29,7 @@ Page layout:
             - Sources (expandable)
             - Faithfulness score badge + explanation
 
-All API calls go through the two helpers at the top (api_get / api_post /
+All API calls go through the helpers at the top (api_get / api_post /
 api_delete). They handle connection errors and non-200 responses uniformly,
 returning None on failure so callers can show st.error() without crashing.
 """
@@ -150,8 +154,8 @@ def refresh_collections():
     """
     Re-fetch collections from the backend and store them in session_state.
 
-    Called after every upload or delete so the sidebar dropdown stays in sync
-    with actual backend state.
+    Called after every upload or delete so every part of the sidebar that
+    reads st.session_state.collections stays in sync with backend state.
     """
     st.session_state.collections = fetch_collections()
 
@@ -213,21 +217,17 @@ def render_chat_history():
     newest-first so the most recent answer is always at the top.
     """
     for entry in reversed(st.session_state.chat_history):
-        # Question
         with st.chat_message("user"):
             st.write(entry["query"])
 
-        # Answer
         with st.chat_message("assistant"):
             st.write(entry["answer"])
 
-            # Faithfulness badge
             render_faithfulness_badge(
                 entry["faithfulness_score"],
                 entry["faithfulness_explanation"],
             )
 
-            # Sources — in an expander to keep the main view clean
             sources = entry.get("sources_cited", [])
             if sources:
                 with st.expander(f"Sources ({len(sources)} cited)", expanded=False):
@@ -242,6 +242,78 @@ def render_chat_history():
 
 
 # ---------------------------------------------------------------------------
+# Collections overview panel
+# ---------------------------------------------------------------------------
+
+def render_collections_overview():
+    """
+    Render an expander in the sidebar listing all collections at a glance.
+
+    Shows every collection with its name and chunk count. Each row has a
+    small delete button that triggers a two-step confirmation before calling
+    DELETE /collections/{name}. After a successful delete the list refreshes
+    automatically so the row disappears without a manual reload.
+
+    Uses a separate session_state key ('overview_confirm_delete') so the
+    confirmation state is independent from the existing single-collection
+    delete button above it.
+
+    Empty state: a friendly message is shown when there are no collections,
+    so the expander is always useful to open even before any uploads.
+    """
+    collections = st.session_state.get("collections", [])
+    count_label = f" ({len(collections)})" if collections else ""
+
+    with st.expander(f"All Collections{count_label}", expanded=False):
+
+        if not collections:
+            st.caption("No documents uploaded yet.")
+            return
+
+        # Column headers
+        hdr_name, hdr_chunks, hdr_action = st.columns([3, 2, 2])
+        hdr_name.markdown("**Collection**")
+        hdr_chunks.markdown("**Chunks**")
+        hdr_action.markdown("**Action**")
+        st.divider()
+
+        pending = st.session_state.get("overview_confirm_delete")
+
+        for col in collections:
+            name  = col["name"]
+            count = col["count"]
+
+            col_name, col_chunks, col_action = st.columns([3, 2, 2])
+            col_name.write(name)
+            col_chunks.write(str(count))
+
+            if pending != name:
+                # Normal state — show the delete button
+                if col_action.button("🗑 Delete", key=f"del_{name}", use_container_width=True):
+                    st.session_state.overview_confirm_delete = name
+                    st.rerun()
+            else:
+                # Confirmation state — this row is pending deletion
+                col_name.warning(f"Delete **{name}**?")
+                btn_yes, btn_no = col_action.columns(2)
+                if btn_yes.button("Yes", key=f"yes_{name}", type="primary"):
+                    result = api_delete(f"/collections/{name}")
+                    if result:
+                        # If the deleted collection was the active one, clear it
+                        if st.session_state.get("selected_collection") == name:
+                            st.session_state.selected_collection = None
+                            st.session_state.chat_history = []
+                        st.session_state.overview_confirm_delete = None
+                        refresh_collections()
+                        st.rerun()
+                if btn_no.button("No", key=f"no_{name}"):
+                    st.session_state.overview_confirm_delete = None
+                    st.rerun()
+
+            st.divider()
+
+
+# ---------------------------------------------------------------------------
 # Sidebar
 # ---------------------------------------------------------------------------
 
@@ -252,8 +324,8 @@ def render_sidebar() -> str | None:
 
     Side effects:
       - Uploads a file and ingests it when the user clicks "Upload & Process".
-      - Deletes a collection when the user confirms deletion.
-      - Refreshes st.session_state.collections after both operations.
+      - Deletes the active collection when the user confirms the single-delete.
+      - Refreshes st.session_state.collections after uploads and deletes.
 
     Returns:
         The selected collection name string, or None.
@@ -308,30 +380,34 @@ def render_sidebar() -> str | None:
                     f"**{result['collection_name']}**."
                 )
                 refresh_collections()
-                # Auto-select the just-uploaded collection
                 st.session_state.selected_collection = result["collection_name"]
 
         st.divider()
 
-        # ── Collection picker ─────────────────────────────────────────────
+        # ── Active collection picker ──────────────────────────────────────
         st.subheader("Active Collection")
 
         collections = st.session_state.get("collections", [])
 
-        # Refresh on first load
-        if not collections and "collections_loaded" not in st.session_state:
+        # Refresh on first page load — collections_loaded starts False and
+        # is set True after the first fetch so we don't re-fetch on every
+        # Streamlit rerun (which fires on every widget interaction).
+        if not collections and not st.session_state.collections_loaded:
             st.session_state.collections_loaded = True
             refresh_collections()
             collections = st.session_state.get("collections", [])
 
         if not collections:
             st.info("No collections yet. Upload a document above to get started.")
+            # Still render the overview (will show its own empty state)
+            st.divider()
+            render_collections_overview()
             return None
 
-        col_names = [c["name"] for c in collections]
+        col_names  = [c["name"]  for c in collections]
         col_counts = {c["name"]: c["count"] for c in collections}
 
-        # Preserve the previously selected collection across reruns
+        # Preserve previously selected collection across reruns
         default_idx = 0
         prev = st.session_state.get("selected_collection")
         if prev in col_names:
@@ -345,10 +421,9 @@ def render_sidebar() -> str | None:
         )
         st.session_state.selected_collection = selected
 
-        # ── Delete collection ─────────────────────────────────────────────
+        # ── Single-collection delete (active collection) ──────────────────
         st.divider()
 
-        # Two-step confirmation to prevent accidental deletes
         if st.session_state.get("confirm_delete") != selected:
             if st.button("🗑 Delete this collection", type="secondary"):
                 st.session_state.confirm_delete = selected
@@ -363,7 +438,6 @@ def render_sidebar() -> str | None:
                         st.success(f"Deleted '{selected}'.")
                         st.session_state.confirm_delete = None
                         st.session_state.selected_collection = None
-                        # Clear chat history — it belonged to this collection
                         st.session_state.chat_history = []
                         refresh_collections()
                         st.rerun()
@@ -371,6 +445,10 @@ def render_sidebar() -> str | None:
                 if st.button("Cancel"):
                     st.session_state.confirm_delete = None
                     st.rerun()
+
+        # ── All Collections overview ──────────────────────────────────────
+        st.divider()
+        render_collections_overview()
 
     return selected
 
@@ -391,7 +469,6 @@ def render_main(selected_collection: str | None):
     """
     st.header("Ask a Question")
 
-    # ── Empty state ───────────────────────────────────────────────────────
     if not selected_collection:
         st.info(
             "👈 Upload a document using the sidebar to get started. "
@@ -443,7 +520,6 @@ def render_main(selected_collection: str | None):
                     },
                 )
             if result:
-                # Prepend to history so newest appears at top
                 st.session_state.chat_history.append(result)
                 st.rerun()
 
@@ -457,7 +533,6 @@ def render_main(selected_collection: str | None):
             if st.button("Clear", use_container_width=True):
                 st.session_state.chat_history = []
                 st.rerun()
-
         render_chat_history()
     else:
         st.caption("Your answers will appear here.")
@@ -475,11 +550,12 @@ def init_session_state():
     Called once at the top of main() before any widgets are rendered.
     """
     defaults = {
-        "chat_history":         [],
-        "collections":          [],
-        "collections_loaded":   False,
-        "selected_collection":  None,
-        "confirm_delete":       None,
+        "chat_history":            [],
+        "collections":             [],
+        "collections_loaded":      False,
+        "selected_collection":     None,
+        "confirm_delete":          None,   # for the single active-collection delete
+        "overview_confirm_delete": None,   # for the per-row delete in the overview panel
     }
     for key, value in defaults.items():
         if key not in st.session_state:
