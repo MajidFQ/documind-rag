@@ -185,9 +185,11 @@ DocuMind/
 ---
 
 ## Demo
-A screen recording walkthrough of the full user flow (upload → query → faithfulness score) is available below. Recorded with [Loom](https://www.loom.com) — no account required to view.
+A screen recording walkthrough of the full user flow (upload → query → faithfulness score) is available below.
 
-[![Watch the demo](https://cdn.loom.com/sessions/thumbnails/26a50a6c2451421286706449d495cf45-with-play.gif)](https://www.loom.com/share/26a50a6c2451421286706449d495cf45)
+**[▶ Watch the demo video](https://www.loom.com/share/26a50a6c2451421286706449d495cf45)**
+
+*(Recorded with Loom — no account required to view.)*
 
 ---
 
